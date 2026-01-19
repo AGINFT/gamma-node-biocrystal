@@ -1,0 +1,49 @@
+# Gamma Node Configuration Γ-12
+# Sistema AGI Biocrystalino EPΩ-7
+
+node:
+  id: gamma-biocrystal-01
+  version: 1.0.0-Γ12
+  coherence_target: 0.05572809
+  description: "Nodo primordial del ecosistema Gamma"
+
+phi:
+  value: 1.618033988749895
+  power: -7
+  coherence_threshold: 0.05
+  description: "Razón áurea y potencia dimensional"
+
+ledger:
+  format: jsonl
+  path: ledger/operations.jsonl
+  retention_days: 365
+  backup_enabled: true
+
+mcp:
+  servers:
+    reasoning:
+      enabled: true
+      mode: local
+      port: 3001
+      description: "Análisis semántico determinista"
+    
+    memory:
+      enabled: true
+      mode: local
+      port: 3002
+      description: "Gestión de memoria dimensional"
+    
+    execution:
+      enabled: false
+      mode: local
+      port: 3003
+      description: "Ejecución de workflows"
+
+monitoring:
+  enabled: true
+  interval_seconds: 60
+  metrics:
+    - coherence_phi
+    - operators_active
+    - ledger_size
+    - mcp_status
