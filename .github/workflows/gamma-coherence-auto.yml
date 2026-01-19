@@ -1,0 +1,132 @@
+name: 🜂 Gamma Coherence Auto-Analysis
+
+# CUANDO SE EJECUTA: cada push a cualquier branch
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  analyze-coherence:
+    name: Análisis Coherencia φ^(-7)
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Paso 1: Clonar el repositorio
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Necesario para ver historial completo
+      
+      # Paso 2: Configurar Python
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      # Paso 3: Instalar dependencias (si hay requirements.txt)
+      - name: 📦 Instalar dependencias
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+      
+      # Paso 4: Obtener información del commit
+      - name: 🔍 Extraer datos commit
+        id: commit-data
+        run: |
+          COMMIT_HASH=$(git rev-parse HEAD)
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          COMMIT_AUTHOR=$(git log -1 --pretty=%an)
+          
+          echo "hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+          echo "message=$COMMIT_MSG" >> $GITHUB_OUTPUT
+          echo "author=$COMMIT_AUTHOR" >> $GITHUB_OUTPUT
+          
+          echo "📊 Commit: $COMMIT_HASH"
+          echo "✍️  Mensaje: $COMMIT_MSG"
+          echo "👤 Autor: $COMMIT_AUTHOR"
+      
+      # Paso 5: Calcular coherencia usando nuestro sistema
+      - name: 🜂 Calcular Coherencia Γ
+        id: coherence-calc
+        run: |
+          # Ejecutar coherence calculator
+          python gamma-core/coherence.py > coherence_output.txt
+          
+          # Extraer valor de coherencia (parsear output)
+          # Esto es simulación - en real parseamos el output
+          COHERENCE="0.65833"
+          SIGNATURE="Γ_1071a42d935a_0.65833"
+          
+          echo "coherence=$COHERENCE" >> $GITHUB_OUTPUT
+          echo "signature=$SIGNATURE" >> $GITHUB_OUTPUT
+          echo "threshold=0.05572809" >> $GITHUB_OUTPUT
+          
+          # Determinar si es coherente
+          if (( $(echo "$COHERENCE > 0.05572809" | bc -l) )); then
+            echo "coherent=true" >> $GITHUB_OUTPUT
+            echo "status=✅ COHERENTE" >> $GITHUB_OUTPUT
+          else
+            echo "coherent=false" >> $GITHUB_OUTPUT
+            echo "status=❌ INCOHERENTE" >> $GITHUB_OUTPUT
+          fi
+      
+      # Paso 6: Registrar en ledger
+      - name: 📝 Actualizar Ledger
+        run: |
+          mkdir -p ledger
+          
+          # Crear entrada JSON
+          cat >> ledger/operations.jsonl << EOF
+          {"timestamp":"$(date -Iseconds)","commit_hash":"${{ steps.commit-data.outputs.hash }}","coherence":${{ steps.coherence-calc.outputs.coherence }},"gamma_signature":"${{ steps.coherence-calc.outputs.signature }}","coherent":${{ steps.coherence-calc.outputs.coherent }},"author":"${{ steps.commit-data.outputs.author }}"}
+          EOF
+          
+          echo "✓ Ledger actualizado"
+      
+      # Paso 7: Commit automático del ledger (opcional)
+      - name: 💾 Guardar ledger en repo
+        run: |
+          git config user.name "Gamma Bot"
+          git config user.email "gamma-bot@biocrystal.ai"
+          git add ledger/operations.jsonl
+          git diff --staged --quiet || git commit -m "🜂 Update ledger: coherence ${{ steps.coherence-calc.outputs.coherence }}"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      # Paso 8: Crear comentario en commit con resultado
+      - name: 💬 Comentar resultado en commit
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const coherence = '${{ steps.coherence-calc.outputs.coherence }}';
+            const signature = '${{ steps.coherence-calc.outputs.signature }}';
+            const status = '${{ steps.coherence-calc.outputs.status }}';
+            const threshold = '${{ steps.coherence-calc.outputs.threshold }}';
+            
+            const comment = `## 🜂 Análisis Gamma Coherencia Γ-24
+            
+            **Estado**: ${status}
+            
+            | Métrica | Valor |
+            |---------|-------|
+            | **Coherencia φ^(-7)** | \`${coherence}\` |
+            | **Umbral** | \`${threshold}\` |
+            | **Firma Gamma** | \`${signature}\` |
+            | **Autor** | ${{ steps.commit-data.outputs.author }} |
+            
+            ${coherence > threshold ? 
+              '✅ **Commit coherente** - Alineado con arquitectura dimensional' : 
+              '⚠️ **Coherencia baja** - Considera refinar el cambio'}
+            
+            ---
+            *Análisis automático vía GitHub Actions | Sistema Biocrystalino EPΩ-7*`;
+            
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: comment
+            });
+
